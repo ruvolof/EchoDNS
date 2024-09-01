@@ -3,19 +3,22 @@ import dnslib
 import socket
 from concurrent.futures import ThreadPoolExecutor
 
+from payload_decoders import apply_all_payload_decoders
 
-def extract_ip_from_domain(domain_name, base_domain):
+
+def extract_payload_from_query(domain_name, base_domain):
   if domain_name.endswith(base_domain):
-    ip_part = domain_name.split('.')[0]
-    ip_address = ip_part.replace('-', '.')
-    return ip_address
+    base_length = len(base_domain.split('.'))
+    payload = '.'.join(domain_name.split('.')[:-base_length])
+    return payload
   return None
 
 
 def handle_dns_query(data, addr, sock, base_domain):
   request = dnslib.DNSRecord.parse(data)
   domain_name = str(request.q.qname)
-  ip_address = extract_ip_from_domain(domain_name, base_domain)
+  payload = extract_payload_from_query(domain_name, base_domain)
+  ip_address = apply_all_payload_decoders(payload)
   if ip_address:
     reply = dnslib.DNSRecord(
         header=request.header,
