@@ -1,10 +1,24 @@
 import configparser
 import dnslib
+import grp
+import os
+import pwd
 import socket
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 from payload_decoders import apply_all_payload_decoders
+
+
+def drop_privileges(uid_name='nobody', gid_name='nogroup'):
+    running_uid = pwd.getpwnam(uid_name).pw_uid
+    running_gid = grp.getgrnam(gid_name).gr_gid
+    os.setgroups([])
+    os.setgid(running_gid)
+    os.setuid(running_uid)
+    os.umask(0o77)
+    if os.getuid() == 0 or os.getgid() == 0:
+        raise Exception("Failed to drop root privileges. Exiting.")
 
 
 def extract_payload_from_query(domain_name, base_domain):
@@ -57,6 +71,8 @@ def main():
   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   sock.bind((bind_address, bind_port))
   print(f"EchoDNS server is listening on {bind_address}:{bind_port}")
+
+  drop_privileges()
 
   with ThreadPoolExecutor(max_workers=20) as executor:
     while True:
