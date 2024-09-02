@@ -29,7 +29,7 @@ class HexDecoder:
       packed_ip = bytes.fromhex(payload)
       ip_address = socket.inet_ntoa(packed_ip)
       return ip_address
-    except OSError:
+    except (OSError, ValueError):
       return None
     
 
@@ -40,6 +40,5 @@ def apply_all_payload_decoders(payload):
   for decoder in payload_decoders:
     ip_address = decoder.get_ip(payload)
     if ip_address:
-      print(f"Query decoded with {decoder}")
-      return ip_address
-  return None
+      return ip_address, decoder
+  return None, None
