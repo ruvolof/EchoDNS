@@ -1,6 +1,7 @@
 import configparser
 import dnslib
 import socket
+import traceback
 from concurrent.futures import ThreadPoolExecutor
 
 from payload_decoders import apply_all_payload_decoders
@@ -14,20 +15,36 @@ def extract_payload_from_query(domain_name, base_domain):
   return None
 
 
+def reply_with_empty_response(dns_request, sock, addr):
+  reply = dnslib.DNSRecord(header=dns_request.header, q=dns_request.q)
+  sock.sendto(reply.pack(), addr)
+
+
+def reply_with_A_record(dns_request, sock, addr, ip_address):
+  reply = dnslib.DNSRecord(header=dns_request.header,
+                           q=dns_request.q,
+                           a=dnslib.RR(str(dns_request.q.qname),
+                                       rdata=dnslib.A(ip_address),
+                                       ttl=300))
+  sock.sendto(reply.pack(), addr)
+
+
 def handle_dns_query(data, addr, sock, base_domain):
-  request = dnslib.DNSRecord.parse(data)
-  domain_name = str(request.q.qname)
-  payload = extract_payload_from_query(domain_name, base_domain)
-  ip_address = apply_all_payload_decoders(payload)
-  if ip_address:
-    reply = dnslib.DNSRecord(
-        header=request.header,
-        q=request.q,
-        a=dnslib.RR(domain_name, rdata=dnslib.A(ip_address), ttl=300))
-    sock.sendto(reply.pack(), addr)
-    print(f"Responded to {domain_name} with {ip_address}")
-  else:
-    print(f"Received unsupported query for {domain_name}")
+  try:
+    request = dnslib.DNSRecord.parse(data)
+    domain_name = str(request.q.qname)
+    payload = extract_payload_from_query(domain_name, base_domain)
+    if not payload:
+      reply_with_empty_response(request, sock, addr)
+      return
+    ip_address = apply_all_payload_decoders(payload)
+    if ip_address:
+      reply_with_A_record(request, sock, addr, ip_address)
+    else:
+      reply_with_empty_response(request, sock, addr)
+  except:
+    traceback.print_exc()
+    reply_with_empty_response(request, sock, addr)
 
 
 def main():
