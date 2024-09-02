@@ -4,22 +4,26 @@ import socket
 class PlainDecoder:
   @staticmethod
   def get_ip(payload):
-    try:
-      socket.inet_aton(payload)
-      return payload
-    except OSError:
-      return None
+    if len(payload.split('.')) == 4:
+      try:
+        socket.inet_aton(payload)
+        return payload
+      except (OSError, ValueError):
+        pass
+    return None
 
 
 class HiphenDecoder:
   @staticmethod
   def get_ip(payload):
-    try:
-      ip_address = payload.replace('-', '.')
-      socket.inet_aton(ip_address)
-      return ip_address
-    except OSError:
-      return None
+    ip_address = payload.replace('-', '.')
+    if len(ip_address.split('.')) == 4:
+      try:
+        socket.inet_aton(ip_address)
+        return ip_address
+      except (OSError, ValueError):
+        pass
+    return None
     
 
 class HexDecoder:
