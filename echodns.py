@@ -47,16 +47,14 @@ def extract_payload_from_query(domain_name, base_domain):
 
 
 def reply_with_empty_response(dns_request, sock, addr):
-  reply = dnslib.DNSRecord(header=dns_request.header, q=dns_request.q)
-  sock.sendto(reply.pack(), addr)
+  sock.sendto(dns_request.reply().pack(), addr)
 
 
 def reply_with_A_record(dns_request, sock, addr, ip_address):
-  reply = dnslib.DNSRecord(header=dns_request.header,
-                           q=dns_request.q,
-                           a=dnslib.RR(str(dns_request.q.qname),
-                                       rdata=dnslib.A(ip_address),
-                                       ttl=300))
+  reply = dns_request.reply()
+  reply.add_answer(dnslib.RR(str(dns_request.q.qname),
+                             rdata=dnslib.A(ip_address),
+                             ttl=300))
   sock.sendto(reply.pack(), addr)
 
 
